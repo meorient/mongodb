@@ -1,0 +1,1 @@
+# 从MySQL中获取NS的客户数据，并对百度地图发起请求获取经纬度信息，组装后导入mongo中，mongo和MySQL的配置在配置中心的map-dev.properties更改
