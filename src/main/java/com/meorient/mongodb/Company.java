@@ -5,14 +5,17 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.io.Serializable;
+
 /**
  * @author sunwanghe
  * @date 2019/5/13 14:16
  */
 
 @Data
-@Document(collection = "customers")
-public class Company {
+@Document(collection = "test")
+public class Company implements Serializable {
+    private static final long serialVersionUID = -3946734305303957850L;
 
     @Id
     private String extId;//客户的外部id

@@ -15,7 +15,7 @@ public interface UserMapper {
 
     @Select("select customer_id,companyname,custentity_meo_address,sales_rep_id,full_name\n" +
             "from customers,employees\n" +
-            "where customers.sales_rep_id is not  null and customers.sales_rep_id=employees.employee_id limit #{start},#{length}")
+            "where customers.sales_rep_id is not  null and customers.sales_rep_id=employees.employee_id and customers.custentity_meo_address like '杭州%' limit #{start},#{length}")
     @Results({
             @Result(id=true,property="extId",column="customer_id"),
             @Result(property="name",column="companyname"),

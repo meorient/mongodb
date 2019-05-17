@@ -4,11 +4,15 @@ import com.alibaba.fastjson.JSONObject;
 import com.meorient.http.HttpUtil;
 import dao.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.geo.Point;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.redis.connection.RedisGeoCommands;
+import org.springframework.data.redis.core.GeoOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.awt.*;
+import javax.annotation.Resource;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -24,12 +28,16 @@ public class Controller {
 
     @Autowired
     private MongoTemplate mongoTemplate;
-    @RequestMapping(value = "/start")
+
+    @Resource
+    private RedisTemplate<String, Company> redisTemplate;
+
+    @RequestMapping(value = "/mongo")
     public String insert(){
 
         int count = userMapper.getCompanyNum();
         int num = count/6000 + 1;
-        for(int i = 0;i<1;i++){
+        for(int i = 0;i<num;i++){
             List<Company> compayList = userMapper.selectCompanyList(i*6000,6000);
             List<Company> list1 = new LinkedList<>();
             List<Company> list2 = new LinkedList<>();
@@ -52,7 +60,27 @@ public class Controller {
             }
             new Thread(new SearchThread(compayList,mongoTemplate)).start();
         }
-        return "success";
+        return "Insert to mongo success";
+    }
+
+    @RequestMapping(value = "/redis")
+    public String insertToRedis(){
+        List<Company> companies = mongoTemplate.findAll(Company.class);
+
+        new Thread(()->{
+            for(Company company:companies){
+                System.out.println(company.getName());
+                GeoOperations<String,Company> ops = redisTemplate.opsForGeo();
+                ops.add("customers", new RedisGeoCommands.GeoLocation(company.getName(),new Point(company.getLocation().getCoordinates()[0],company.getLocation().getCoordinates()[1])));
+            }
+        }).start();
+        return "Insert to redis success";
+    }
+
+    @RequestMapping(value = "/h2")
+    public String insertToH2(){
+        List<Company> companies = mongoTemplate.findAll(Company.class);
+        return "Insert to h2 success";
     }
 
 
@@ -61,17 +89,22 @@ class SearchThread implements Runnable{
     private MongoTemplate mongoTemplate;
 
     private List<Company> list ;
-    private String url = "http://api.map.baidu.com/geocoder/v2/?address=ADDRESS&output=json&ak=yw4wuBm1a6VbICpmz6nXGYY5Eo64YhYo";//小孙的ak
-    //private String url = "http://api.map.baidu.com/geocoder/v2/?address=ADDRESS&output=json&ak=13sRQX9y3U8e8IaaE9YGwCq9N4jklQQu";//小周的ak
+    private String url3 = "http://api.map.baidu.com/geocoder/v2/?address=";
+    private String url2 = "&output=json&ak=LG9WZRIQGZ7l3ZL3cg0lh5rE28DBCytv";//储蓄的ak
+//    private String url2 = "&output=json&ak=yw4wuBm1a6VbICpmz6nXGYY5Eo64YhYo";//小孙的ak
+//    private String url2 = "&output=json&ak=13sRQX9y3U8e8IaaE9YGwCq9N4jklQQu";//小周的ak
+
     public SearchThread(List<Company> list,MongoTemplate mongoTemplate){
         this.list = list;
         this.mongoTemplate= mongoTemplate;
     }
     @Override
     public void run() {
+
+        int i = 1;
         for(Company company: list){
             if(company.getAddress()!=null) {
-                url = url.replace("ADDRESS", company.getAddress());
+                String url = url3+company.getAddress()+url2;
                 JSONObject jsonObject = HttpUtil.getHttpsResponse(url);
                 if(jsonObject!=null) {
                     JSONObject result = jsonObject.getJSONObject("result");
@@ -93,7 +126,8 @@ class SearchThread implements Runnable{
                 }
             }
 
-            System.out.println("一次完成");
+            System.out.println("第"+i+"次请求完成");
+            i++;
         }
         System.out.println("一条线程执行完成");
     }
